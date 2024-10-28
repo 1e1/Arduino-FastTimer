@@ -1,21 +1,30 @@
-FastTimer_precision_t	KEYWORD3
-
-# Methods
-update	                KEYWORD2
-isTick2	                KEYWORD2
-isTick4	                KEYWORD2
-isTick8	                KEYWORD2
-isTick16	            KEYWORD2
-isTick32	            KEYWORD2
-isTick64	            KEYWORD2
-isTick128	            KEYWORD2
-isTick  	            KEYWORD2
-getCachedTime  	        KEYWORD2
-writeIn  	            KEYWORD2
-readFrom  	            KEYWORD2
-getTimestampUnix        KEYWORD2
-getTimestampRFC3339     KEYWORD2
-
-# Type names
 FastTimer	            KEYWORD1    DATA_TYPE
-FastTimerNtp	        KEYWORD1    DATA_TYPE
+FastTimer_precision_t	KEYWORD3
+update	                KEYWORD2
+isPureTickMin	        KEYWORD2
+isPureTickBy2	        KEYWORD2
+isPureTickBy4	        KEYWORD2
+isPureTickBy8	        KEYWORD2
+isPureTickBy16	        KEYWORD2
+isPureTickBy32	        KEYWORD2
+isPureTickBy64	        KEYWORD2
+isPureTickBy128	        KEYWORD2
+isPureTickBy256	        KEYWORD2
+isPureTickMax	        KEYWORD2
+isTickMin	            KEYWORD2
+isTickBy2	            KEYWORD2
+isTickBy4	            KEYWORD2
+isTickBy8	            KEYWORD2
+isTickBy16	            KEYWORD2
+isTickBy32	            KEYWORD2
+isTickBy64	            KEYWORD2
+isTickBy128    	        KEYWORD2
+isTickBy256    	        KEYWORD2
+isTickMax	            KEYWORD2
+isTick  	            KEYWORD2
+getCachedMillis         KEYWORD2
+
+
+TimestampNtp	        KEYWORD1    DATA_TYPE
+writeIn	                KEYWORD2
+readFrom	            KEYWORD2

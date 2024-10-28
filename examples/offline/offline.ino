@@ -1,6 +1,6 @@
 #include <Arduino.h>
 
-#include <FastTimer.hpp>
+#include "FastTimer.hpp"
 
 
 bool isLedOn; 
@@ -16,7 +16,9 @@ void setup()
 
 void loop()
 {
-    if (timer1s.update()) {
+    timer1s.update();
+
+    if (timer1s.isTick()) {
         isLedOn = !isLedOn;
         if (isLedOn) {
             digitalWrite(LED_BUILTIN, HIGH);
