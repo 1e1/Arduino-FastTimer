@@ -2,7 +2,8 @@
 #include <WiFiUdp.h>
 #include <IPAddress.h>
 
-#include <FastTimerNtp.hpp>
+#include "FastTimer.hpp"
+#include "TimestampNtp.hpp"
 
 
 #ifndef STASSID
@@ -10,15 +11,18 @@
 #define STAPSK "your-password"
 #endif
 
+#ifndef LED_BUILTIN
 #define LED_BUILTIN 2
+#endif
 
 
 unsigned int localPort = 3669;
 unsigned int ntpPort = 123;
 
 WiFiUDP udp;
-FastTimerNtp<FastTimer_precision_t::P_1s_4m> timer1s;
 IPAddress ntpIp;
+TimestampNtp ntp;
+FastTimer<FastTimer_precision_t::P_1s_4m> timer1s;
 
 
 void setup()
@@ -53,27 +57,28 @@ void setup()
 
 void loop()
 {
-    if (timer1s.update()) {
+    timer1s.update();
 
-        if (timer1s.isTick8()) {
-            // Ethernet.maintain();
-            {   // send NTP packet
-                udp.beginPacket(ntpIp, ntpPort);
-                timer1s.writeIn(udp);
-                udp.endPacket();
-            }
+    if (timer1s.isPureTickMin()) {
+        // ?.maintain()?
+        TSNTP_REQUEST(ntp, udp, ntpIp, ntpPort);
 
-            digitalWrite(LED_BUILTIN, HIGH);
-            Serial.println("Led HIGH");
-        } else {
-            digitalWrite(LED_BUILTIN, LOW);
-            Serial.println("Led LOW");
-        }
+        digitalWrite(LED_BUILTIN, HIGH);
+        Serial.println("Led HIGH");
+    } else {
+        digitalWrite(LED_BUILTIN, LOW);
+        Serial.println("Led LOW");
     }
 
     if (udp.parsePacket()) {
-        timer1s.readFrom(udp);
+        ntp.readFrom(udp);
         udp.flush();
+
+        Serial.print("Unix timestamp: ");
+        Serial.println(ntp.getTimestampUnix());
+
+        Serial.print("RFC3339 timestamp: ");
+        Serial.println(ntp.getTimestampRFC3339());
     }
 
     delay(100);
@@ -83,7 +88,9 @@ void crash()
 {
     bool isLedOn; 
     while (true) {
-        if (timer1s.update()) {
+        timer1s.update();
+
+        if (timer1s.isTick()) {
             isLedOn = !isLedOn;
             if (isLedOn) {
                 digitalWrite(LED_BUILTIN, HIGH);
