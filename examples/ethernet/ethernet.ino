@@ -1,8 +1,9 @@
 #include <Arduino.h>
 #include <Ethernet.h>
+#include <IPAddress.h>
 
-#include "FastTimer.hpp"
-#include "TimestampNtp.hpp"
+#include <FastTimer.hpp>
+#include <TimestampNtp.hpp>
 
 
 // Enter a MAC address for your controller below.
@@ -20,22 +21,23 @@ byte mac[] = {
 unsigned int localPort = 3669;
 unsigned int ntpPort = 123;
 
-EthernetUDP udp;
+WiFiUDP udp;
 IPAddress ntpIp;
-TimestampNtp ntp;
+TimestampNtp ntp(udp);
 FastTimer<FastTimer_precision_t::P_1s_4m> timer1s;
 
 
 void setup()
 {
     pinMode(LED_BUILTIN, OUTPUT);
-    digitalWrite(LED_BUILTIN, LOW);
+    digitalWrite(LED_BUILTIN, HIGH); 
 
     // Open serial communications and wait for port to open:
     Serial.begin(9600);
     while (!Serial) {
         ; // wait for serial port to connect. Needed for native USB port only
     }
+    Serial.flush();
 
     // start the Ethernet
     Ethernet.begin(mac);
@@ -52,15 +54,21 @@ void setup()
 
 
     Serial.print("IP address: ");
-    Serial.println(Ethernet.localIP());
+    Serial.println(WiFi.localIP());
 
-    // IPAddress dhcpAddress = Ethernet._dhcp->getDhcpServerIp();
-    ntpIp = Ethernet.gatewayIP();
-    Serial.print("NTP/gateway address: ");
+    ntpIp = WiFi.gatewayIP();
+    Serial.print("Gateway address: ");
+    Serial.println(ntpIp);
+
+    ntpIp = IPAddress(NTP_IP);
+    Serial.print("NTP address: ");
     Serial.println(ntpIp);
 
     // start UDP
     udp.begin(localPort);
+
+    Serial.println("*** START ***");
+    Serial.flush();
 }
 
 void loop()
@@ -69,31 +77,22 @@ void loop()
 
     if (timer1s.isPureTickMin()) {
         Ethernet.maintain();
-        {   // send NTP packet
-            udp.beginPacket(ntpIp, ntpPort);
-            ntp.writeIn(udp);
-            udp.endPacket();
-        }
+        ntp.request(ntpIp);
 
-        digitalWrite(LED_BUILTIN, HIGH);
-        Serial.println("Led HIGH");
-    } else {
         digitalWrite(LED_BUILTIN, LOW);
-        Serial.println("Led LOW");
     }
 
-    if (udp.parsePacket()) {
-        ntp.readFrom(udp);
-        udp.flush();
+    delay(100);
 
+    if (ntp.listen()) {
         Serial.print("Unix timestamp: ");
         Serial.println(ntp.getTimestampUnix());
 
         Serial.print("RFC3339 timestamp: ");
         Serial.println(ntp.getTimestampRFC3339());
-    }
 
-    delay(100);
+        digitalWrite(LED_BUILTIN, HIGH);
+    }
 }
 
 void crash()

@@ -19,11 +19,11 @@ FastTimer<FastTimer_precision_t::P_1s_4m> timer1s;
 
 usage:
 ```
-    timer1s.update();
+timer1s.update();
 
-    if (timer1s.isTick()) {
-        Serial.println("tick...");
-    }
+if (timer1s.isTick()) {
+    Serial.println("tick...");
+}
 ```
 
 ### TimestampNtp
@@ -32,26 +32,21 @@ An NTP client to obtain a Unix or RFC3339 timestamp.
 
 setup:
 ```
+IPAddress ntpIp(94, 23, 21, 189); // 0.fr.pool.ntp.org
 WiFiUDP udp;
-IPAddress ntpIp;
-TimestampNtp ntp;
+TimestampNtp ntp(udp);
 
-udp.begin(localPort);
+udp.begin(3615); // free random local port
 ```
 
 request:
 ```
-udp.beginPacket(ntpIp, ntpPort);
-ntp.writeIn(udp);
-udp.endPacket();
+ntp.request(ntpIp);
 ```
 
 response:
 ```
-if (udp.parsePacket()) {
-    ntp.readFrom(udp);
-    udp.flush();
-}
+ntp.listen();
 ```
 
 usage:
@@ -70,13 +65,3 @@ Notice: `getTimestampRFC3339()` is an expensive function
 - Arduino avr boards
 - ESP8266
 - ESP32
-
-
-## Issues - Workarounds
-
-As the IPAddress class is not the same between AVR and ESP (different lwip), the UDP client cannot be abstracted. 
-You must manage the UDP client outside this library. 
-
-Choose into your ino file: 
-- `EthernetUDP udp;`
-- `WiFiUDP udp;`
