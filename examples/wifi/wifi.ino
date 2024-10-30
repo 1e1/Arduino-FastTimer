@@ -6,21 +6,18 @@
 #include <TimestampNtp.hpp>
 
 
-#ifndef STASSID
 #define STASSID "**** SSID ****"
 #define STAPSK  "***password***"
-#endif
 
 #ifndef LED_BUILTIN
 #define LED_BUILTIN 2
 #endif
 
 
-const unsigned int localPort = 3669;
-const uint8_t NTP_IP[] = { 94, 23, 21, 189 };
+const unsigned int LOCAL_PORT = 3669;
+const char* NTP_HOST = "2.europe.pool.ntp.org";
 
 WiFiUDP udp;
-IPAddress ntpIp;
 TimestampNtp ntp(udp);
 FastTimer<FastTimer_precision_t::P_1s_4m> timer1s;
 
@@ -49,16 +46,14 @@ void setup()
     Serial.print("IP address: ");
     Serial.println(WiFi.localIP());
 
-    ntpIp = WiFi.gatewayIP();
     Serial.print("Gateway address: ");
-    Serial.println(ntpIp);
+    Serial.println(WiFi.gatewayIP());
 
-    ntpIp = IPAddress(NTP_IP);
-    Serial.print("NTP address: ");
-    Serial.println(ntpIp);
+    Serial.print("NTP host: ");
+    Serial.println(NTP_HOST);
 
     // start UDP
-    udp.begin(localPort);
+    udp.begin(LOCAL_PORT);
 
     Serial.println("*** START ***");
     Serial.flush();
@@ -70,7 +65,7 @@ void loop()
 
     if (timer1s.isPureTickMin()) {
         // ?.maintain()?
-        ntp.request(ntpIp);
+        ntp.request(NTP_HOST);
 
         digitalWrite(LED_BUILTIN, LOW);
     }

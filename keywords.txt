@@ -26,5 +26,7 @@ getCachedMillis         KEYWORD2
 
 
 TimestampNtp	        KEYWORD1    DATA_TYPE
-writeIn	                KEYWORD2
-readFrom	            KEYWORD2
+request	                KEYWORD2
+listen	                KEYWORD2
+getTimestampUnix        KEYWORD2
+getTimestampRFC3339     KEYWORD2

@@ -18,11 +18,10 @@ byte mac[] = {
 #endif
 
 
-unsigned int localPort = 3669;
-unsigned int ntpPort = 123;
+const unsigned int LOCAL_PORT = 3669;
+const IPAddress NTP_IP = IPAddress(45, 138, 55, 62); // 2.europe.pool.ntp.org
 
-WiFiUDP udp;
-IPAddress ntpIp;
+EthernetUDP udp;
 TimestampNtp ntp(udp);
 FastTimer<FastTimer_precision_t::P_1s_4m> timer1s;
 
@@ -54,18 +53,16 @@ void setup()
 
 
     Serial.print("IP address: ");
-    Serial.println(WiFi.localIP());
+    Serial.println(Ethernet.localIP());
 
-    ntpIp = WiFi.gatewayIP();
     Serial.print("Gateway address: ");
-    Serial.println(ntpIp);
+    Serial.println(Ethernet.gatewayIP());
 
-    ntpIp = IPAddress(NTP_IP);
     Serial.print("NTP address: ");
-    Serial.println(ntpIp);
+    Serial.println(NTP_IP);
 
     // start UDP
-    udp.begin(localPort);
+    udp.begin(LOCAL_PORT);
 
     Serial.println("*** START ***");
     Serial.flush();
@@ -77,7 +74,7 @@ void loop()
 
     if (timer1s.isPureTickMin()) {
         Ethernet.maintain();
-        ntp.request(ntpIp);
+        ntp.request(NTP_IP);
 
         digitalWrite(LED_BUILTIN, LOW);
     }

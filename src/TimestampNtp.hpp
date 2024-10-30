@@ -15,43 +15,18 @@ class TimestampNtp {
 
     TimestampNtp(UDP &udp) : _udp(udp), _secondsSince1900(0) {};
 
-    /*
-        udp.beginPacket(ip, FastTimerNtp::NTP_PORT);
-        this->writeIn(udp);
-        udp.endPacket();
-    */
     void request(const IPAddress serverIp, const uint16_t serverPort = NTP_PORT)
     {
-        // http://tools.ietf.org/html/rfc1305
-        byte ntp_packet[NTP_PACKET_SIZE] = {
-            // LI = 11, alarm condition (FastTimer not synchronized)
-            // VN = 100, Version Number: currently 4
-            // VM = 011, client
-            // Stratum = 0, unspecified
-            // Poll Interval: 6 => 2**6 = 64 seconds
-            // Precision: 16MHz Arduino is about 2**-24
-            B11100011, 0, 6, (byte) -24,
-            // Root Delay: 29s -> target less than 1 minute (64s)
-            0, 29, 0, 0,
-            // Root Dispersion: 29s -> target less than 1 minute (64s)
-            0, 29, 0, 0,
-            // Reference FastTimer Identifier
-            'K', 'I', 'S', 'S',
-            //0
-        };
-        
         this->_udp.beginPacket(serverIp, serverPort);
-        this->_udp.write(ntp_packet, NTP_PACKET_SIZE);
-        this->_udp.endPacket();
+        this->_sendPacket();
     }
 
-    /*
-        if (udp.parsePacket())
-        {
-            this->readFrom(udp);
-            // udp.flush();
-        }
-    */
+    void request(const char* host, const uint16_t serverPort = NTP_PORT)
+    {
+        this->_udp.beginPacket(host, serverPort);
+        this->_sendPacket();
+    }
+
     const boolean listen(void)
     {
         if (this->_udp.parsePacket() == 0) {
@@ -74,24 +49,33 @@ class TimestampNtp {
     
     const char* getTimestampRFC3339(void)
     {
-        // Timestamp timestamp = {0};
-        char* timestamp = "2000-00-00T00:00:00Z";
-        const unsigned long secondsSince2024 = this->getTimestampUnix() - MONDAY_20240101_SINCE_19700101_IN_SECONDS;
-        const unsigned long minutesSince2024 = secondsSince2024 / 60;
-        const unsigned long hoursSince2024 = minutesSince2024 / 60;
+        char* timestamp = strdup("2000-00-00T00:00:00Z");
+        const uint32_t secondsSince2024 = this->getTimestampUnix() - MONDAY_20240101_SINCE_19700101_IN_SECONDS;
+
+        const uint32_t minutesSince2024 = secondsSince2024 / 60;
         {
-            const uint8_t minute = minutesSince2024 - (hoursSince2024 * 60);
-            this->_fillRFC3339(timestamp +14, minute);
-            // timestamp.minute = minute;
+            const uint8_t x = minutesSince2024;
+            const uint8_t y = secondsSince2024;
+            const uint8_t z = y - x * 60;
+            this->_fillRFC3339(timestamp +17, z);
+        }
+        
+        const uint32_t hoursSince2024 = minutesSince2024 / 60;
+        {
+            const uint8_t x = hoursSince2024;
+            const uint8_t y = minutesSince2024;
+            const uint8_t z = y - x * 60;
+            this->_fillRFC3339(timestamp +14, z);
         }
 
         // limit to 65535 days = 179 years (*366)
         // max is MONDAY_2024_01_01 + 179 years => 2203
-        const unsigned long daysSince2024 = hoursSince2024 / 24;
+        const uint16_t daysSince2024 = hoursSince2024 / 24;
         {
-            const uint8_t hour = hoursSince2024 - (daysSince2024 * 24);
-            this->_fillRFC3339(timestamp +11, hour);
-            // timestamp.hour = hour;
+            const uint8_t x = daysSince2024;
+            const uint8_t y = hoursSince2024;
+            const uint8_t z = y - x * 24;
+            this->_fillRFC3339(timestamp +11, z);
         }
 
         // minimal datetime is 2024-03-01 00:00:00
@@ -102,10 +86,9 @@ class TimestampNtp {
         {
             // max is 2099 due to 2-bytes completion
             this->_fillRFC3339(timestamp +2, yearsSince2024 + 24);
-            // timestamp.yearSince24 = yearsSince2024;
         }
 
-        unsigned int dayOfYear = daysSince2024 - (yearsSince2024 * 365) - nbLeapYear;
+        uint16_t dayOfYear = daysSince2024 - (yearsSince2024 * 365) - nbLeapYear;
         {
             uint8_t month = 0;
             byte monthSizes[] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
@@ -120,22 +103,42 @@ class TimestampNtp {
 
             this->_fillRFC3339(timestamp +5, month + 1);
             this->_fillRFC3339(timestamp +8, dayOfYear);
-            // timestamp.month = month;
-            // timestamp.day = dayOfYear;
         }
-
-        // timestamp.isSync = 1;
 
         return timestamp;
     }
 
     protected:
 
-    void _fillRFC3339(char *pattern, const uint8_t value)
+    void _sendPacket(void)
+    {
+        // http://tools.ietf.org/html/rfc1305
+        byte ntp_packet[NTP_PACKET_SIZE] = {
+            // LI = 11, alarm condition (FastTimer not synchronized)
+            // VN = 100, Version Number: currently 4
+            // VM = 011, client
+            // Stratum = 0, unspecified
+            // Poll Interval: 6 => 2**6 = 64 seconds
+            // Precision: 16MHz Arduino is about 2**-24
+            B11100011, 0, 6, (byte) -24,
+            // Root Delay: 29s -> target less than 1 minute (64s)
+            0, 29, 0, 0,
+            // Root Dispersion: 29s -> target less than 1 minute (64s)
+            0, 29, 0, 0,
+            // Reference FastTimer Identifier
+            'K', 'I', 'S', 'S',
+            //0
+        };
+        
+        this->_udp.write(ntp_packet, NTP_PACKET_SIZE);
+        this->_udp.endPacket();
+    }
+
+    void _fillRFC3339(char *str, const uint8_t value)
     {
         const uint8_t tens = value / 10;
-        pattern[0] = '0' + tens;
-        pattern[1] = '0' + value - (tens * 10);
+        str[0] = '0' + tens;
+        str[1] = '0' + value - (tens * 10);
     }
 
     UDP &_udp;
