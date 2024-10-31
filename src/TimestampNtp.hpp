@@ -32,7 +32,7 @@ class TimestampUnixNtp {
 
     TimestampUnixNtp(UDP &udp) : _udp(udp), _secondsSince1900(MONDAY_20240101_SINCE_19700101_IN_SECONDS) {};
 
-    const unsigned long getTimestampUnix(void) { return this->_secondsSince1900 - MONDAY_19700101_SINCE_19000101_IN_SECONDS; }
+    const unsigned long getTimestampUnix(const int offset = 0) { return this->_secondsSince1900 + offset - MONDAY_19700101_SINCE_19000101_IN_SECONDS; }
 
     void request(const IPAddress serverIp, const uint16_t serverPort = NTP_PORT)
     {
@@ -95,7 +95,7 @@ class TimestampRFC3339Ntp : public TimestampUnixNtp {
 
     const char* getTimestampRFC3339(void) { return this->_strRFC3339; }
 
-    const boolean listen(void) override
+    const boolean listenSync(void)
     {
         if (!this->_hasResponse()) {
             return false;
@@ -103,18 +103,16 @@ class TimestampRFC3339Ntp : public TimestampUnixNtp {
 
         this->_receivePacket();
         yield();
-        this->_syncRFC3339();
+        this->syncRFC3339();
 
         return true;
     }
-
-    protected:
     
-    void _syncRFC3339(const int offset = 0)
+    void syncRFC3339(const int offset = 0)
     {
         // make Time
         // =========
-        const uint32_t secondsSince2024 = this->getTimestampUnix() - MONDAY_20240101_SINCE_19700101_IN_SECONDS + offset;
+        const uint32_t secondsSince2024 = this->getTimestampUnix(offset) - MONDAY_20240101_SINCE_19700101_IN_SECONDS;
 
         const uint32_t minutesSince2024 = secondsSince2024 / 60;
         {
@@ -178,6 +176,8 @@ class TimestampRFC3339Ntp : public TimestampUnixNtp {
             this->_fillRFC3339(8, dayOfPeriod);
         }
     }
+
+    protected:
 
     void _fillRFC3339(const uint8_t p, const uint8_t value)
     {

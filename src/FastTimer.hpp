@@ -108,7 +108,7 @@ class ShortTimer8 {
 
     const boolean hasChanged(void) // call it once in the main loop()
     {
-        const byte previousTime = this->_cachedTime;
+        const uint8_t previousTime = this->_cachedTime;
         this->update();
 
         return this->_cachedTime ^ previousTime;

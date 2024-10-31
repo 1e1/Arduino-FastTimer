@@ -39,6 +39,7 @@ listen	                KEYWORD2
 
 TimestampRFC3339Ntp	    KEYWORD1    DATA_TYPE
 getTimestampRFC3339     KEYWORD2
-listen	                KEYWORD2
+listenSync	            KEYWORD2
+syncRFC3339             KEYWORD2
 
 TimestampNtp	        KEYWORD1    DATA_TYPE
