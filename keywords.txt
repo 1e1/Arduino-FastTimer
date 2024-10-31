@@ -24,9 +24,21 @@ isTickMax	            KEYWORD2
 isTick  	            KEYWORD2
 getCachedMillis         KEYWORD2
 
+ShortTimer8             KEYWORD1    DATA_TYPE
+FastTimer_precision_t	KEYWORD3
+hasChanged              KEYWORD2
+update                  KEYWORD2
+reset                   KEYWORD2
+getElapsedTime          KEYWORD2
 
-TimestampNtp	        KEYWORD1    DATA_TYPE
+
+TimestampUnixNtp        KEYWORD1    DATA_TYPE
 getTimestampUnix        KEYWORD2
-getTimestampRFC3339     KEYWORD2
 request	                KEYWORD2
 listen	                KEYWORD2
+
+TimestampRFC3339Ntp	    KEYWORD1    DATA_TYPE
+getTimestampRFC3339     KEYWORD2
+listen	                KEYWORD2
+
+TimestampNtp	        KEYWORD1    DATA_TYPE

@@ -22,10 +22,16 @@
 
 
 enum FastTimer_precision_t : byte {
-    P_1s_4m=10,     // update()==true every  1s, max time  4m
+    P_1s_4m =10,    // update()==true every  1s, max time  4m
     P_4s_15m=12,    // update()==true every  4s, max time 15m
     P_16s_1h=14,    // update()==true every 16s, max time  1h
     P_65s_4h=16,    // update()==true every 65s, max time  4h
+};
+
+enum ShortTimer_precision_t : uint16_t {
+    P_millis =1,
+    P_seconds=1000,    
+    P_minutes=60000,   
 };
 
 
@@ -86,4 +92,45 @@ class FastTimer {
 
     byte _section;
     byte _cachedTime;
+};
+
+
+template <ShortTimer_precision_t p>
+class ShortTimer8 {
+
+    public:
+    
+
+    ShortTimer8() {
+        this->update();
+        this->reset();
+    };
+
+    const boolean hasChanged(void) // call it once in the main loop()
+    {
+        const byte previousTime = this->_cachedTime;
+        this->update();
+
+        return this->_cachedTime ^ previousTime;
+    }
+
+    void update(void)
+    {
+        this->_cachedTime = byte(millis() / p);
+    }
+
+    void reset(void)
+    {
+        this->_referenceTime = this->_cachedTime;
+    }
+
+    const uint8_t getElapsedTime(void)
+    {
+        return this->_cachedTime - this->_referenceTime;
+    }
+
+    protected:
+
+    uint8_t _referenceTime;
+    uint8_t _cachedTime;
 };

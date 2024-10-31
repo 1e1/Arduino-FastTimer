@@ -4,16 +4,33 @@
 #include <IPAddress.h>
 
 
-class TimestampUnix {
+class TimestampUnixNtp {
 
     public:
 
-    static constexpr unsigned int NTP_PORT = 123;
-    static constexpr unsigned int NTP_PACKET_SIZE = 48;
-    static constexpr unsigned long MONDAY_20240101_SINCE_19700101_IN_SECONDS = 1704067200UL;
-    static constexpr unsigned long MONDAY_19700101_SINCE_19000101_IN_SECONDS = 2208988800UL;
+    static constexpr const unsigned int NTP_PORT = 123;
+    static constexpr const unsigned int NTP_PACKET_SIZE = 48;
+    static constexpr const unsigned long MONDAY_20240101_SINCE_19700101_IN_SECONDS = 1704067200UL;
+    static constexpr const unsigned long MONDAY_19700101_SINCE_19000101_IN_SECONDS = 2208988800UL;
+    // http://tools.ietf.org/html/rfc1305
+    static constexpr const byte NTP_PACKET[NTP_PACKET_SIZE] = {
+            // LI = 11, alarm condition (FastTimer not synchronized)
+            // VN = 100, Version Number: currently 4
+            // VM = 011, client
+            // Stratum = 0, unspecified
+            // Poll Interval: 6 => 2**6 = 64 seconds
+            // Precision: 16MHz Arduino is about 2**-24
+            B11100011, 0, 6, (byte) -24,
+            // Root Delay: 29s -> target less than 1 minute (64s)
+            0, 29, 0, 0,
+            // Root Dispersion: 29s -> target less than 1 minute (64s)
+            0, 29, 0, 0,
+            // Reference FastTimer Identifier
+            'K', 'I', 'S', 'S',
+            //0
+        };
 
-    TimestampUnix(UDP &udp) : _udp(udp), _secondsSince1900(MONDAY_20240101_SINCE_19700101_IN_SECONDS) {};
+    TimestampUnixNtp(UDP &udp) : _udp(udp), _secondsSince1900(MONDAY_20240101_SINCE_19700101_IN_SECONDS) {};
 
     const unsigned long getTimestampUnix(void) { return this->_secondsSince1900 - MONDAY_19700101_SINCE_19000101_IN_SECONDS; }
 
@@ -43,26 +60,8 @@ class TimestampUnix {
     protected:
 
     void _sendPacket(void)
-    {
-        // http://tools.ietf.org/html/rfc1305
-        byte ntp_packet[NTP_PACKET_SIZE] = {
-            // LI = 11, alarm condition (FastTimer not synchronized)
-            // VN = 100, Version Number: currently 4
-            // VM = 011, client
-            // Stratum = 0, unspecified
-            // Poll Interval: 6 => 2**6 = 64 seconds
-            // Precision: 16MHz Arduino is about 2**-24
-            B11100011, 0, 6, (byte) -24,
-            // Root Delay: 29s -> target less than 1 minute (64s)
-            0, 29, 0, 0,
-            // Root Dispersion: 29s -> target less than 1 minute (64s)
-            0, 29, 0, 0,
-            // Reference FastTimer Identifier
-            'K', 'I', 'S', 'S',
-            //0
-        };
-        
-        this->_udp.write(ntp_packet, NTP_PACKET_SIZE);
+    {   
+        this->_udp.write(NTP_PACKET, NTP_PACKET_SIZE);
         this->_udp.endPacket();
     }
 
@@ -88,11 +87,11 @@ class TimestampUnix {
 };
 
 
-class TimestampRFC3339 : public TimestampUnix {
+class TimestampRFC3339Ntp : public TimestampUnixNtp {
 
     public:
 
-    TimestampRFC3339(UDP &udp) : TimestampUnix(udp), _strRFC3339(strdup("2024-01-01T00:00:00Z")) {};
+    TimestampRFC3339Ntp(UDP &udp) : TimestampUnixNtp(udp), _strRFC3339(strdup("2024-01-01T00:00:00Z")) {};
 
     const char* getTimestampRFC3339(void) { return this->_strRFC3339; }
 
@@ -111,11 +110,11 @@ class TimestampRFC3339 : public TimestampUnix {
 
     protected:
     
-    void _syncRFC3339(void)
+    void _syncRFC3339(const int offset = 0)
     {
         // make Time
         // =========
-        const uint32_t secondsSince2024 = this->getTimestampUnix() - MONDAY_20240101_SINCE_19700101_IN_SECONDS;
+        const uint32_t secondsSince2024 = this->getTimestampUnix() - MONDAY_20240101_SINCE_19700101_IN_SECONDS + offset;
 
         const uint32_t minutesSince2024 = secondsSince2024 / 60;
         {
@@ -191,4 +190,4 @@ class TimestampRFC3339 : public TimestampUnix {
 
 };
 
-typedef TimestampNtp TimestampRFC3339;
+typedef TimestampRFC3339Ntp TimestampNtp;
