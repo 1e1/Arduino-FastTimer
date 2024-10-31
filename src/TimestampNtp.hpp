@@ -4,7 +4,7 @@
 #include <IPAddress.h>
 
 
-class TimestampNtp {
+class TimestampUnix {
 
     public:
 
@@ -13,10 +13,9 @@ class TimestampNtp {
     static constexpr unsigned long MONDAY_20240101_SINCE_19700101_IN_SECONDS = 1704067200UL;
     static constexpr unsigned long MONDAY_19700101_SINCE_19000101_IN_SECONDS = 2208988800UL;
 
-    TimestampNtp(UDP &udp) : _udp(udp), _strRFC3339(strdup("2024-01-01T00:00:00Z")), _secondsSince1900(MONDAY_20240101_SINCE_19700101_IN_SECONDS) {};
+    TimestampUnix(UDP &udp) : _udp(udp), _secondsSince1900(MONDAY_20240101_SINCE_19700101_IN_SECONDS) {};
 
     const unsigned long getTimestampUnix(void) { return this->_secondsSince1900 - MONDAY_19700101_SINCE_19000101_IN_SECONDS; }
-    const char* getTimestampRFC3339(void) { return this->_strRFC3339; }
 
     void request(const IPAddress serverIp, const uint16_t serverPort = NTP_PORT)
     {
@@ -30,15 +29,13 @@ class TimestampNtp {
         this->_sendPacket();
     }
 
-    const boolean listen(void)
+    virtual const boolean listen(void)
     {
         if (!this->_hasResponse()) {
             return false;
         }
 
         this->_receivePacket();
-        yield();
-        this->_syncRFC3339();
 
         return true;
     }
@@ -84,10 +81,40 @@ class TimestampNtp {
                                 ;
         this->_udp.flush();
     }
-    
 
+    UDP &_udp;
+    unsigned long _secondsSince1900;
+
+};
+
+
+class TimestampRFC3339 : public TimestampUnix {
+
+    public:
+
+    TimestampRFC3339(UDP &udp) : TimestampUnix(udp), _strRFC3339(strdup("2024-01-01T00:00:00Z")) {};
+
+    const char* getTimestampRFC3339(void) { return this->_strRFC3339; }
+
+    const boolean listen(void) override
+    {
+        if (!this->_hasResponse()) {
+            return false;
+        }
+
+        this->_receivePacket();
+        yield();
+        this->_syncRFC3339();
+
+        return true;
+    }
+
+    protected:
+    
     void _syncRFC3339(void)
     {
+        // make Time
+        // =========
         const uint32_t secondsSince2024 = this->getTimestampUnix() - MONDAY_20240101_SINCE_19700101_IN_SECONDS;
 
         const uint32_t minutesSince2024 = secondsSince2024 / 60;
@@ -97,6 +124,7 @@ class TimestampNtp {
             const uint8_t z = y - x * 60;
             this->_fillRFC3339(17, z);
         }
+        // release secondsSince2024
         
         const uint32_t hoursSince2024 = minutesSince2024 / 60;
         {
@@ -105,6 +133,7 @@ class TimestampNtp {
             const uint8_t z = y - x * 60;
             this->_fillRFC3339(14, z);
         }
+        // release minutesSince2024
 
         // limit to 65535 days = 179 years (*366)
         // max is MONDAY_2024_01_01 + 179 years => 2203
@@ -115,7 +144,11 @@ class TimestampNtp {
             const uint8_t z = y - x * 24;
             this->_fillRFC3339(11, z);
         }
+        // release hoursSince2024
 
+
+        // make Date
+        // =========
         // minimal datetime is 2024-03-01 00:00:00
         const uint8_t nbLeapYear = (daysSince2024 -31 -28) / (365*4 +1);
         // limit to 255 years
@@ -126,21 +159,24 @@ class TimestampNtp {
             this->_fillRFC3339(2, yearsSince2024 + 24);
         }
 
-        uint16_t dayOfYear = daysSince2024 - (yearsSince2024 * 365) - nbLeapYear;
+        uint16_t dayOfPeriod = daysSince2024 - (yearsSince2024 * 365) - nbLeapYear;
+        // release daysSince2024
+        // release nbLeapYear
         {
-            uint8_t month = 0;
             byte monthSizes[] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
-            
             if (yearsSince2024 & B11 == 0) {
                 monthSizes[1] = 29;
             }
-            while (month<sizeof(monthSizes) && dayOfYear > monthSizes[month]) {
-                dayOfYear = dayOfYear - monthSizes[month];
+            // release yearsSince2024
+
+            uint8_t month = 0;
+            while (month<sizeof(monthSizes) && dayOfPeriod > monthSizes[month]) {
+                dayOfPeriod = dayOfPeriod - monthSizes[month];
                 ++month;
             }
 
             this->_fillRFC3339(5, month + 1);
-            this->_fillRFC3339(8, dayOfYear);
+            this->_fillRFC3339(8, dayOfPeriod);
         }
     }
 
@@ -151,8 +187,8 @@ class TimestampNtp {
         this->_strRFC3339[p+1] = '0' + value - (tens * 10);
     }
 
-    UDP &_udp;
     char* _strRFC3339;
-    unsigned long _secondsSince1900;
 
 };
+
+typedef TimestampNtp TimestampRFC3339;
