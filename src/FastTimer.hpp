@@ -106,6 +106,11 @@ class ShortTimer8 {
         this->reset();
     };
 
+    const uint16_t getPrecisionInMillis(void)
+    {
+        return p;
+    }
+
     const boolean hasChanged(void) // call it once in the main loop()
     {
         const uint8_t previousTime = this->_cachedTime;
@@ -127,6 +132,11 @@ class ShortTimer8 {
     const uint8_t getElapsedTime(void)
     {
         return this->_cachedTime - this->_referenceTime;
+    }
+
+    const unsigned long getElapsedTimeInMillis(void)
+    {
+        return this->getElapsedTime() * p;
     }
 
     protected:
