@@ -8,12 +8,12 @@ class TimestampUnixNtp {
 
     public:
 
-    static constexpr const unsigned int NTP_PORT = 123;
-    static constexpr const unsigned int NTP_PACKET_SIZE = 48;
-    static constexpr const unsigned long MONDAY_20240101_SINCE_19700101_IN_SECONDS = 1704067200UL;
-    static constexpr const unsigned long MONDAY_19700101_SINCE_19000101_IN_SECONDS = 2208988800UL;
+    static constexpr unsigned int NTP_PORT = 123;
+    static constexpr unsigned int NTP_PACKET_SIZE = 48;
+    static constexpr unsigned long MONDAY_20240101_SINCE_19700101_IN_SECONDS = 1704067200UL;
+    static constexpr unsigned long MONDAY_19700101_SINCE_19000101_IN_SECONDS = 2208988800UL;
     // http://tools.ietf.org/html/rfc1305
-    static constexpr const byte NTP_PACKET[NTP_PACKET_SIZE] = {
+    static constexpr byte NTP_PACKET[NTP_PACKET_SIZE] = {
             // LI = 11, alarm condition (FastTimer not synchronized)
             // VN = 100, Version Number: currently 4
             // VM = 011, client
@@ -91,11 +91,13 @@ class TimestampRFC3339Ntp : public TimestampUnixNtp {
 
     public:
 
+    static constexpr byte MONTH_SIZES[] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
+
     TimestampRFC3339Ntp(UDP &udp) : TimestampUnixNtp(udp), _strRFC3339(strdup("2024-01-01T00:00:00Z")) {};
 
     const char* getTimestampRFC3339(void) { return this->_strRFC3339; }
 
-    const boolean listenSync(void)
+    const boolean listenSync(const int offset = 0)
     {
         if (!this->_hasResponse()) {
             return false;
@@ -103,7 +105,7 @@ class TimestampRFC3339Ntp : public TimestampUnixNtp {
 
         this->_receivePacket();
         yield();
-        this->syncRFC3339();
+        this->syncRFC3339(offset);
 
         return true;
     }
@@ -156,21 +158,24 @@ class TimestampRFC3339Ntp : public TimestampUnixNtp {
             this->_fillRFC3339(2, yearsSince2024 + 24);
         }
 
+        const boolean isLeapYear = (yearsSince2024 & B11) == 0;
+        // release yearsSince2024
         uint16_t dayOfPeriod = daysSince2024 - (yearsSince2024 * 365) - nbLeapYear;
         // release daysSince2024
         // release nbLeapYear
         {
-            byte monthSizes[] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
-            if (yearsSince2024 & B11 == 0) {
-                monthSizes[1] = 29;
-            }
-            // release yearsSince2024
-
             uint8_t month = 0;
-            while (month<sizeof(monthSizes) && dayOfPeriod > monthSizes[month]) {
-                dayOfPeriod = dayOfPeriod - monthSizes[month];
-                ++month;
-            }
+            do {
+                uint8_t monthSize = TimestampRFC3339Ntp::MONTH_SIZES[month];
+                if (isLeapYear && month == 2) {
+                    ++monthSize;
+                }
+                if (dayOfPeriod > monthSize) {
+                    dayOfPeriod = dayOfPeriod - monthSize;
+                    break;
+                }
+
+            } while(month < sizeof(TimestampRFC3339Ntp::MONTH_SIZES));
 
             this->_fillRFC3339(5, month + 1);
             this->_fillRFC3339(8, dayOfPeriod);
