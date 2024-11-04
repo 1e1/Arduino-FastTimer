@@ -160,24 +160,26 @@ class TimestampRFC3339Ntp : public TimestampUnixNtp {
 
         const boolean isLeapYear = (yearsSince2024 & B11) == 0;
         // release yearsSince2024
-        uint16_t dayOfPeriod = daysSince2024 - (yearsSince2024 * 365) - nbLeapYear;
+        uint16_t dayOfPeriod = 1+ daysSince2024 - (yearsSince2024 * 365) - nbLeapYear;
         // release daysSince2024
         // release nbLeapYear
         {
             uint8_t month = 0;
             do {
                 uint8_t monthSize = TimestampRFC3339Ntp::MONTH_SIZES[month];
-                if (isLeapYear && month == 2) {
+                ++month;
+                if (isLeapYear && month == 1) {
                     ++monthSize;
                 }
                 if (dayOfPeriod > monthSize) {
                     dayOfPeriod = dayOfPeriod - monthSize;
+                } else {
                     break;
                 }
 
             } while(month < sizeof(TimestampRFC3339Ntp::MONTH_SIZES));
 
-            this->_fillRFC3339(5, month + 1);
+            this->_fillRFC3339(5, month);
             this->_fillRFC3339(8, dayOfPeriod);
         }
     }
