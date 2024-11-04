@@ -9,6 +9,7 @@
 #define STASSID "**** SSID ****"
 #define STAPSK  "***password***"
 
+
 #ifndef LED_BUILTIN
 #define LED_BUILTIN 2
 #endif
@@ -63,7 +64,7 @@ void loop()
 {
     timer1s.update();
 
-    if (timer1s.isPureTickMin()) {
+    if (timer1s.isTickBy64()) {
         // ?.maintain()?
         ntp.request(NTP_HOST);
 
@@ -72,15 +73,19 @@ void loop()
 
     delay(100);
 
-    if (ntp.listen()) {
+    if (ntp.listenSync()) {
         Serial.print("Unix timestamp: ");
         Serial.println(ntp.getTimestampUnix());
 
         Serial.print("RFC3339 timestamp: ");
         Serial.println(ntp.getTimestampRFC3339());
 
+        Serial.printf("[HW] Free heap: %d bytes\n", ESP.getFreeHeap());
+
         digitalWrite(LED_BUILTIN, HIGH);
     }
+
+    delay(100);
 }
 
 void crash()
