@@ -34,13 +34,13 @@ class TimestampUnixNtp {
 
     const unsigned long getTimestampUnix(const int offset = 0) { return this->_secondsSince1900 + offset - MONDAY_19700101_SINCE_19000101_IN_SECONDS; }
 
-    void request(const IPAddress serverIp, const uint16_t serverPort = NTP_PORT)
+    void request(const IPAddress serverIp, const uint16_t serverPort = NTP_PORT) const
     {
         this->_udp.beginPacket(serverIp, serverPort);
         this->_sendPacket();
     }
 
-    void request(const char* host, const uint16_t serverPort = NTP_PORT)
+    void request(const char* host, const uint16_t serverPort = NTP_PORT) const
     {
         this->_udp.beginPacket(host, serverPort);
         this->_sendPacket();
@@ -59,14 +59,17 @@ class TimestampUnixNtp {
 
     protected:
 
-    void _sendPacket(void)
+    void _sendPacket(void) const
     {   
         this->_udp.write(NTP_PACKET, NTP_PACKET_SIZE);
         this->_udp.endPacket();
     }
 
 
-    const boolean _hasResponse(void) { return this->_udp.parsePacket() >= NTP_PACKET_SIZE; }
+    const boolean _hasResponse(void) const
+    {
+        return this->_udp.parsePacket() >= NTP_PACKET_SIZE; 
+    }
 
 
     void _receivePacket(void)
@@ -95,7 +98,10 @@ class TimestampRFC3339Ntp : public TimestampUnixNtp {
 
     TimestampRFC3339Ntp(UDP &udp) : TimestampUnixNtp(udp), _strRFC3339(strdup("2024-01-01T00:00:00Z")) {};
 
-    const char* getTimestampRFC3339(void) { return this->_strRFC3339; }
+    const char* getTimestampRFC3339(void) const
+    {
+        return this->_strRFC3339;
+    }
 
     const boolean listenSync(const int offset = 0)
     {
@@ -104,7 +110,6 @@ class TimestampRFC3339Ntp : public TimestampUnixNtp {
         }
 
         this->_receivePacket();
-        yield();
         this->syncRFC3339(offset);
 
         return true;
