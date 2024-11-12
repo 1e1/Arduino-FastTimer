@@ -35,7 +35,7 @@ enum ShortTimer_precision_t : uint16_t {
 };
 
 
-template <FastTimer_precision_t p>
+template <const FastTimer_precision_t p>
 class FastTimer {
 
     public:
@@ -95,7 +95,7 @@ class FastTimer {
 };
 
 
-template <ShortTimer_precision_t p>
+template <const ShortTimer_precision_t p>
 class ShortTimer8 {
 
     public:
@@ -106,7 +106,7 @@ class ShortTimer8 {
         this->reset();
     };
 
-    const uint16_t getPrecisionInMillis(void)
+    constexpr uint16_t getPrecisionInMillis(void) const
     {
         return p;
     }
@@ -129,12 +129,12 @@ class ShortTimer8 {
         this->_referenceTime = this->_cachedTime;
     }
 
-    const uint8_t getElapsedTime(void)
+    const uint8_t getElapsedTime(void) const
     {
         return this->_cachedTime - this->_referenceTime;
     }
 
-    const unsigned long getElapsedTimeInMillis(void)
+    const unsigned long getElapsedTimeInMillis(void) const
     {
         return this->getElapsedTime() * p;
     }
