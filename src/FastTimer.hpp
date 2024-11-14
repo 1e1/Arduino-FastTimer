@@ -41,14 +41,25 @@ class FastTimer {
     public:
 
     enum TickIndex : byte {
-        CUT256 = 0,
-        CUT128 = 1,
-        CUT64  = 2,
-        CUT32  = 3,
-        CUT16  = 4,
-        CUT8   = 5,
-        CUT4   = 6,
-        CUT2   = 7,
+        TI_CUT256 = 0,
+        TI_CUT128 = 1,
+        TI_CUT64  = 2,
+        TI_CUT32  = 3,
+        TI_CUT16  = 4,
+        TI_CUT8   = 5,
+        TI_CUT4   = 6,
+        TI_CUT2   = 7,
+    };
+
+    enum PureTickMask : byte {
+        PTM_CUT256 = 1,
+        PTM_CUT128 = 3,
+        PTM_CUT64  = 7,
+        PTM_CUT32  = 15,
+        PTM_CUT16  = 31,
+        PTM_CUT8   = 63,
+        PTM_CUT4   = 127,
+        PTM_CUT2   = 255,
     };
     
     FastTimer() : _section(0), _cachedTime(-1) {};
@@ -62,26 +73,26 @@ class FastTimer {
 
     // inline
     __attribute__((always_inline)) inline const boolean isPureTickMin  (void) const { return this->isPureTickBy2();    };
-    __attribute__((always_inline)) inline const boolean isPureTickBy2  (void) const { return this->isPureTick(CUT2);   };
-    __attribute__((always_inline)) inline const boolean isPureTickBy4  (void) const { return this->isPureTick(CUT4);   };
-    __attribute__((always_inline)) inline const boolean isPureTickBy8  (void) const { return this->isPureTick(CUT8);   };
-    __attribute__((always_inline)) inline const boolean isPureTickBy16 (void) const { return this->isPureTick(CUT16);  };
-    __attribute__((always_inline)) inline const boolean isPureTickBy32 (void) const { return this->isPureTick(CUT32);  };
-    __attribute__((always_inline)) inline const boolean isPureTickBy64 (void) const { return this->isPureTick(CUT64);  };
-    __attribute__((always_inline)) inline const boolean isPureTickBy128(void) const { return this->isPureTick(CUT128); };
-    __attribute__((always_inline)) inline const boolean isPureTickBy256(void) const { return this->isPureTick(CUT256); };
+    __attribute__((always_inline)) inline const boolean isPureTickBy2  (void) const { return this->isPureTick(PTM_CUT2);   };
+    __attribute__((always_inline)) inline const boolean isPureTickBy4  (void) const { return this->isPureTick(PTM_CUT4);   };
+    __attribute__((always_inline)) inline const boolean isPureTickBy8  (void) const { return this->isPureTick(PTM_CUT8);   };
+    __attribute__((always_inline)) inline const boolean isPureTickBy16 (void) const { return this->isPureTick(PTM_CUT16);  };
+    __attribute__((always_inline)) inline const boolean isPureTickBy32 (void) const { return this->isPureTick(PTM_CUT32);  };
+    __attribute__((always_inline)) inline const boolean isPureTickBy64 (void) const { return this->isPureTick(PTM_CUT64);  };
+    __attribute__((always_inline)) inline const boolean isPureTickBy128(void) const { return this->isPureTick(PTM_CUT128); };
+    __attribute__((always_inline)) inline const boolean isPureTickBy256(void) const { return this->isPureTick(PTM_CUT256); };
     __attribute__((always_inline)) inline const boolean isPureTickMax  (void) const { return this->isPureTickBy256();  };
-    __attribute__((always_inline)) inline const boolean isPureTick(const TickIndex index) const { return this->_section & (0x1<<index); };
+    __attribute__((always_inline)) inline const boolean isPureTick(const PureTickMask mask) const { return this->_section == mask; };
 
     __attribute__((always_inline)) inline const boolean isTickMin  (void) const { return this->isTickBy2();    };
-    __attribute__((always_inline)) inline const boolean isTickBy2  (void) const { return this->isTick(CUT2);   };
-    __attribute__((always_inline)) inline const boolean isTickBy4  (void) const { return this->isTick(CUT4);   };
-    __attribute__((always_inline)) inline const boolean isTickBy8  (void) const { return this->isTick(CUT8);   };
-    __attribute__((always_inline)) inline const boolean isTickBy16 (void) const { return this->isTick(CUT16);  };
-    __attribute__((always_inline)) inline const boolean isTickBy32 (void) const { return this->isTick(CUT32);  };
-    __attribute__((always_inline)) inline const boolean isTickBy64 (void) const { return this->isTick(CUT64);  };
-    __attribute__((always_inline)) inline const boolean isTickBy128(void) const { return this->isTick(CUT128); };
-    __attribute__((always_inline)) inline const boolean isTickBy256(void) const { return this->isTick(CUT256); };
+    __attribute__((always_inline)) inline const boolean isTickBy2  (void) const { return this->isTick(TI_CUT2);   };
+    __attribute__((always_inline)) inline const boolean isTickBy4  (void) const { return this->isTick(TI_CUT4);   };
+    __attribute__((always_inline)) inline const boolean isTickBy8  (void) const { return this->isTick(TI_CUT8);   };
+    __attribute__((always_inline)) inline const boolean isTickBy16 (void) const { return this->isTick(TI_CUT16);  };
+    __attribute__((always_inline)) inline const boolean isTickBy32 (void) const { return this->isTick(TI_CUT32);  };
+    __attribute__((always_inline)) inline const boolean isTickBy64 (void) const { return this->isTick(TI_CUT64);  };
+    __attribute__((always_inline)) inline const boolean isTickBy128(void) const { return this->isTick(TI_CUT128); };
+    __attribute__((always_inline)) inline const boolean isTickBy256(void) const { return this->isTick(TI_CUT256); };
     __attribute__((always_inline)) inline const boolean isTickMax  (void) const { return this->isTickBy256();  };
     __attribute__((always_inline)) inline const boolean isTick(const TickIndex index) const { return this->_section >> index; };
     __attribute__((always_inline)) inline const boolean isTick(void) const { return this->_section; };
