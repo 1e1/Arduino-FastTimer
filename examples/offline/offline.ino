@@ -4,7 +4,7 @@
 
 
 bool isLedOn; 
-FastTimer<FastTimer_precision_t::P_1s_4m> timer1s;
+FastTimer<FastTimerPrecision::P_1s_4m> timer1s;
 
 
 void setup()

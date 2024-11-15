@@ -19,7 +19,7 @@ const char* NTP_HOST = "2.europe.pool.ntp.org";
 
 WiFiUDP udp;
 TimestampNtp ntp(udp);
-ShortTimer8<ShortTimer_precision_t::P_seconds> timer1s;
+ShortTimer8<ShortTimerPrecision::P_seconds> timer1s;
 
 
 void setup()

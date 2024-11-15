@@ -1,5 +1,5 @@
 FastTimer	            KEYWORD1    DATA_TYPE
-FastTimer_precision_t	KEYWORD3
+FastTimerPrecision	    KEYWORD3
 update	                KEYWORD2
 isPureTickMin	        KEYWORD2
 isPureTickBy2	        KEYWORD2
@@ -25,7 +25,7 @@ isTick  	            KEYWORD2
 getCachedMillis         KEYWORD2
 
 ShortTimer8             KEYWORD1    DATA_TYPE
-FastTimer_precision_t	KEYWORD3
+FastTimerPrecision 	    KEYWORD3
 hasChanged              KEYWORD2
 update                  KEYWORD2
 reset                   KEYWORD2

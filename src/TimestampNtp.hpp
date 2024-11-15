@@ -6,21 +6,19 @@
 
 class TimestampUnixNtp {
 
-    public:
+public:
 
     static constexpr unsigned int NTP_PORT = 123;
-    static constexpr unsigned int NTP_PACKET_SIZE = 48;
-    static constexpr unsigned long MONDAY_20240101_SINCE_19700101_IN_SECONDS = 1704067200UL;
-    static constexpr unsigned long MONDAY_19700101_SINCE_19000101_IN_SECONDS = 2208988800UL;
-    // http://tools.ietf.org/html/rfc1305
-    static constexpr byte NTP_PACKET[NTP_PACKET_SIZE] = {
+    static constexpr unsigned long UNIX_EPOCH_OFFSET = 2208988800UL; ///< Offset from 1900 to 1970 epoch.
+    static constexpr unsigned long UNIX_EPOCH_OFFSET_MON_JAN_1ST_2024 = 2208988800UL; ///< Offset from 1900 to 1970 epoch.
+    static constexpr std::array<byte, 48> NTP_PACKET = {
             // LI = 11, alarm condition (FastTimer not synchronized)
             // VN = 100, Version Number: currently 4
             // VM = 011, client
             // Stratum = 0, unspecified
             // Poll Interval: 6 => 2**6 = 64 seconds
             // Precision: 16MHz Arduino is about 2**-24
-            B11100011, 0, 6, (byte) -24,
+            0b11100011, 0, 6, (byte) -24,
             // Root Delay: 29s -> target less than 1 minute (64s)
             0, 29, 0, 0,
             // Root Dispersion: 29s -> target less than 1 minute (64s)
@@ -30,58 +28,58 @@ class TimestampUnixNtp {
             //0
         };
 
-    TimestampUnixNtp(UDP &udp) : _udp(udp), _secondsSince1900(MONDAY_20240101_SINCE_19700101_IN_SECONDS) {};
+    TimestampUnixNtp(UDP &udp) : _udp(udp), _secondsSince1900(UNIX_EPOCH_OFFSET_MON_JAN_1ST_2024) {}
 
-    const unsigned long getTimestampUnix(const int offset = 0) { return this->_secondsSince1900 + offset - MONDAY_19700101_SINCE_19000101_IN_SECONDS; }
+    unsigned long getTimestampUnix(const int offset = 0) const {
+        return _secondsSince1900 + offset - UNIX_EPOCH_OFFSET;
+    }
 
     void request(const IPAddress serverIp, const uint16_t serverPort = NTP_PORT) const
     {
-        this->_udp.beginPacket(serverIp, serverPort);
-        this->_sendPacket();
+        _udp.beginPacket(serverIp, serverPort);
+        _sendPacket();
     }
 
     void request(const char* host, const uint16_t serverPort = NTP_PORT) const
     {
-        this->_udp.beginPacket(host, serverPort);
-        this->_sendPacket();
+        _udp.beginPacket(host, serverPort);
+        _sendPacket();
     }
 
-    virtual const boolean listen(void)
+    boolean listen(void)
     {
-        if (!this->_hasResponse()) {
+        if (!_hasResponse()) {
             return false;
         }
 
-        this->_receivePacket();
+        _receivePacket();
 
         return true;
     }
 
-    protected:
+protected:
 
     void _sendPacket(void) const
     {   
-        this->_udp.write(NTP_PACKET, NTP_PACKET_SIZE);
-        this->_udp.endPacket();
+        _udp.write(NTP_PACKET.data(), NTP_PACKET.size());
+        _udp.endPacket();
     }
 
-
-    const boolean _hasResponse(void) const
+    boolean _hasResponse(void) const
     {
-        return this->_udp.parsePacket() >= NTP_PACKET_SIZE; 
+        return _udp.parsePacket() >= NTP_PACKET.size(); 
     }
-
 
     void _receivePacket(void)
     {
-        byte ntp_packet[NTP_PACKET_SIZE];
-        this->_udp.read(ntp_packet, NTP_PACKET_SIZE);
-        this->_secondsSince1900 = long(ntp_packet[40]) << 24
-                                | long(ntp_packet[41]) << 16
-                                | int(ntp_packet[42]) << 8
-                                | int(ntp_packet[43]) << 0
+        byte ntp_packet[NTP_PACKET.size()];
+        _udp.read(ntp_packet, NTP_PACKET.size());
+        _secondsSince1900 = (long(ntp_packet[40]) << 24)
+                                | (long(ntp_packet[41]) << 16)
+                                | (int(ntp_packet[42]) << 8)
+                                | (int(ntp_packet[43]) << 0)
                                 ;
-        this->_udp.flush();
+        _udp.flush();
     }
 
     UDP &_udp;
@@ -92,25 +90,23 @@ class TimestampUnixNtp {
 
 class TimestampRFC3339Ntp : public TimestampUnixNtp {
 
-    public:
+public:
 
-    static constexpr byte MONTH_SIZES[] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
+    TimestampRFC3339Ntp(UDP& udp) : TimestampUnixNtp(udp) {}
 
-    TimestampRFC3339Ntp(UDP &udp) : TimestampUnixNtp(udp), _strRFC3339(strdup("2024-01-01T00:00:00Z")) {};
-
-    const char* getTimestampRFC3339(void) const
+    const String getTimestampRFC3339(void) const
     {
-        return this->_strRFC3339;
+        return _strRFC3339;
     }
 
-    const boolean listenSync(const int offset = 0)
+    boolean listenSync(const int offset = 0)
     {
-        if (!this->_hasResponse()) {
+        if (!_hasResponse()) {
             return false;
         }
 
-        this->_receivePacket();
-        this->syncRFC3339(offset);
+        _receivePacket();
+        syncRFC3339(offset);
 
         return true;
     }
@@ -119,14 +115,14 @@ class TimestampRFC3339Ntp : public TimestampUnixNtp {
     {
         // make Time
         // =========
-        const uint32_t secondsSince2024 = this->getTimestampUnix(offset) - MONDAY_20240101_SINCE_19700101_IN_SECONDS;
+        const uint32_t secondsSince2024 = getTimestampUnix(offset) - UNIX_EPOCH_OFFSET_MON_JAN_1ST_2024;
 
         const uint32_t minutesSince2024 = secondsSince2024 / 60;
         {
             const uint8_t x = minutesSince2024;
             const uint8_t y = secondsSince2024;
             const uint8_t z = y - x * 60;
-            this->_fillRFC3339(17, z);
+            _fillRFC3339(17, z);
         }
         // release secondsSince2024
         
@@ -135,7 +131,7 @@ class TimestampRFC3339Ntp : public TimestampUnixNtp {
             const uint8_t x = hoursSince2024;
             const uint8_t y = minutesSince2024;
             const uint8_t z = y - x * 60;
-            this->_fillRFC3339(14, z);
+            _fillRFC3339(14, z);
         }
         // release minutesSince2024
 
@@ -146,7 +142,7 @@ class TimestampRFC3339Ntp : public TimestampUnixNtp {
             const uint8_t x = daysSince2024;
             const uint8_t y = hoursSince2024;
             const uint8_t z = y - x * 24;
-            this->_fillRFC3339(11, z);
+            _fillRFC3339(11, z);
         }
         // release hoursSince2024
 
@@ -160,7 +156,7 @@ class TimestampRFC3339Ntp : public TimestampUnixNtp {
         const uint8_t yearsSince2024 = (daysSince2024 - (nbLeapYear+1)) / 365;
         {
             // max is 2099 due to 2-bytes completion
-            this->_fillRFC3339(2, yearsSince2024 + 24);
+            _fillRFC3339(2, yearsSince2024 + 24);
         }
 
         const boolean isLeapYear = (yearsSince2024 & B11) == 0;
@@ -171,7 +167,7 @@ class TimestampRFC3339Ntp : public TimestampUnixNtp {
         {
             uint8_t month = 0;
             do {
-                uint8_t monthSize = TimestampRFC3339Ntp::MONTH_SIZES[month];
+                uint8_t monthSize = _MONTH_SIZES[month];
                 ++month;
                 if (isLeapYear && month == 1) {
                     ++monthSize;
@@ -182,23 +178,25 @@ class TimestampRFC3339Ntp : public TimestampUnixNtp {
                     break;
                 }
 
-            } while(month < sizeof(TimestampRFC3339Ntp::MONTH_SIZES));
+            } while(month < sizeof(_MONTH_SIZES));
 
-            this->_fillRFC3339(5, month);
-            this->_fillRFC3339(8, dayOfPeriod);
+            _fillRFC3339(5, month);
+            _fillRFC3339(8, dayOfPeriod);
         }
     }
 
     protected:
 
-    void _fillRFC3339(const uint8_t p, const uint8_t value)
+    void _fillRFC3339(const uint8_t pos, const uint8_t value)
     {
         const uint8_t tens = value / 10;
-        this->_strRFC3339[p+0] = '0' + tens;
-        this->_strRFC3339[p+1] = '0' + value - (tens * 10);
+        _strRFC3339[pos+0] = '0' + tens;
+        _strRFC3339[pos+1] = '0' + value - (tens * 10);
     }
 
-    char* _strRFC3339;
+    static constexpr std::array<byte, 12> _MONTH_SIZES = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
+
+    char _strRFC3339[21] = "2024-01-01T00:00:00Z";
 
 };
 

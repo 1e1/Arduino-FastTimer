@@ -23,7 +23,7 @@ const IPAddress NTP_IP = IPAddress(45, 138, 55, 62); // 2.europe.pool.ntp.org
 
 EthernetUDP udp;
 TimestampNtp ntp(udp);
-FastTimer<FastTimer_precision_t::P_1s_4m> timer1s;
+FastTimer<FastTimerPrecision::P_1s_4m> timer1s;
 
 
 void setup()

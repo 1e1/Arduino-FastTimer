@@ -14,7 +14,7 @@ For example, `FastTimer::CUT64` retrieves Ticks of 4mn/64 ~ 4s.
 
 setup:
 ```
-FastTimer<FastTimer_precision_t::P_1s_4m> timer1s;
+FastTimer<FastTimerPrecision::P_1s_4m> timer1s;
 ```
 
 usage:
@@ -35,7 +35,7 @@ The single interval is defined in the setup.
 
 setup:
 ```
-ShortTimer8<ShortTimer_precision_t::P_seconds> timer1s;
+ShortTimer8<ShortTimerPrecision::P_seconds> timer1s;
 ```
 
 usage:
@@ -52,7 +52,7 @@ You can define your own group size (up to 255).
 Example with minutes and seconds:
 setup:
 ```
-ShortTimer8<ShortTimer_precision_t::P_seconds> timer1s;
+ShortTimer8<ShortTimerPrecision::P_seconds> timer1s;
 ```
 
 loop:
