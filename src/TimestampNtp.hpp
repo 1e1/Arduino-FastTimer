@@ -9,8 +9,8 @@ class TimestampUnixNtp {
 public:
 
     static constexpr unsigned int NTP_PORT = 123;
-    static constexpr unsigned long UNIX_EPOCH_OFFSET = 2208988800UL; ///< Offset from 1900 to 1970 epoch.
-    static constexpr unsigned long UNIX_EPOCH_OFFSET_MON_JAN_1ST_2024 = 2208988800UL; ///< Offset from 1900 to 1970 epoch.
+    static constexpr unsigned long OFFSET_MON_JAN_1ST_1900_TO_UNIX_EPOCH = 2208988800UL; ///< Offset from 1900 to 1970 epoch.
+    static constexpr unsigned long OFFSET_UNIX_EPOCH_TO_MON_JAN_1ST_2024 = 1704067200L; ///< Offset from 1970 to 2024 epoch.
     static constexpr std::array<byte, 48> NTP_PACKET = {
             // LI = 11, alarm condition (FastTimer not synchronized)
             // VN = 100, Version Number: currently 4
@@ -28,10 +28,10 @@ public:
             //0
         };
 
-    TimestampUnixNtp(UDP &udp) : _udp(udp), _secondsSince1900(UNIX_EPOCH_OFFSET_MON_JAN_1ST_2024) {}
+    TimestampUnixNtp(UDP &udp) : _udp(udp), _secondsSince1900(OFFSET_MON_JAN_1ST_1900_TO_UNIX_EPOCH + OFFSET_UNIX_EPOCH_TO_MON_JAN_1ST_2024) {}
 
     unsigned long getTimestampUnix(const int offset = 0) const {
-        return _secondsSince1900 + offset - UNIX_EPOCH_OFFSET;
+        return _secondsSince1900 + offset - OFFSET_MON_JAN_1ST_1900_TO_UNIX_EPOCH;
     }
 
     void request(const IPAddress serverIp, const uint16_t serverPort = NTP_PORT) const
@@ -115,7 +115,7 @@ public:
     {
         // make Time
         // =========
-        const uint32_t secondsSince2024 = getTimestampUnix(offset) - UNIX_EPOCH_OFFSET_MON_JAN_1ST_2024;
+        const uint32_t secondsSince2024 = getTimestampUnix(offset) - OFFSET_UNIX_EPOCH_TO_MON_JAN_1ST_2024;
 
         const uint32_t minutesSince2024 = secondsSince2024 / 60;
         {
@@ -150,10 +150,10 @@ public:
         // make Date
         // =========
         // minimal datetime is 2024-03-01 00:00:00
-        const uint8_t nbLeapYear = (daysSince2024 -31 -28) / (365*4 +1);
+        const uint8_t nbLeapYear = /* 2024 is a leap year -> */ 1+ /* <- */ ( (daysSince2024 -31 -28) / (365*4 +1) );
         // limit to 255 years
         // max is MONDAY_2024_01_01 + 255 years => 2273
-        const uint8_t yearsSince2024 = (daysSince2024 - (nbLeapYear+1)) / 365;
+        const uint8_t yearsSince2024 = (daysSince2024 - nbLeapYear) / 365;
         {
             // max is 2099 due to 2-bytes completion
             _fillRFC3339(2, yearsSince2024 + 24);
