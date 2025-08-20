@@ -10,7 +10,7 @@ public:
 
     static constexpr unsigned int NTP_PORT = 123;
     static constexpr unsigned long OFFSET_MON_JAN_1ST_1900_TO_UNIX_EPOCH = 2208988800UL; ///< Offset from 1900 to 1970 epoch.
-    static constexpr unsigned long OFFSET_UNIX_EPOCH_TO_MON_JAN_1ST_2024 = 1704067200L; ///< Offset from 1970 to 2024 epoch.
+    static constexpr unsigned long OFFSET_UNIX_EPOCH_TO_MON_JAN_1ST_2024 = 1704067200UL; ///< Offset from 1970 to 2024 epoch.
     static constexpr std::array<byte, 48> NTP_PACKET = {
             // LI = 11, alarm condition (FastTimer not synchronized)
             // VN = 100, Version Number: currently 4
@@ -28,9 +28,12 @@ public:
             //0
         };
 
-    TimestampUnixNtp(UDP &udp) : _udp(udp), _secondsSince1900(OFFSET_MON_JAN_1ST_1900_TO_UNIX_EPOCH + OFFSET_UNIX_EPOCH_TO_MON_JAN_1ST_2024) {}
+    TimestampUnixNtp(UDP &udp) : _udp(udp), _secondsSince1900(0)
+    {
+    }
 
-    unsigned long getTimestampUnix(const int offset = 0) const {
+    unsigned long getTimestampUnix(const int offset = 0) const
+    {
         return _secondsSince1900 + offset - OFFSET_MON_JAN_1ST_1900_TO_UNIX_EPOCH;
     }
 
@@ -46,7 +49,7 @@ public:
         _sendPacket();
     }
 
-    boolean listen(void)
+    const boolean listen(void)
     {
         if (!_hasResponse()) {
             return false;
@@ -60,7 +63,7 @@ public:
 protected:
 
     void _sendPacket(void) const
-    {   
+    {
         _udp.write(NTP_PACKET.data(), NTP_PACKET.size());
         _udp.endPacket();
     }
@@ -74,11 +77,14 @@ protected:
     {
         byte ntp_packet[NTP_PACKET.size()];
         _udp.read(ntp_packet, NTP_PACKET.size());
-        _secondsSince1900 = (long(ntp_packet[40]) << 24)
-                                | (long(ntp_packet[41]) << 16)
-                                | (int(ntp_packet[42]) << 8)
-                                | (int(ntp_packet[43]) << 0)
-                                ;
+        // test if result is not null: as min date is MON_JAN_1ST_2024: ntp_packet[40] >= 233
+        if (ntp_packet[40]) { //  && ntp_packet[41] && ntp_packet[42] && ntp_packet[43])
+            _secondsSince1900 = (long(ntp_packet[40]) << 24)
+                                    | (long(ntp_packet[41]) << 16)
+                                    | (int(ntp_packet[42]) << 8)
+                                    | (int(ntp_packet[43]) << 0)
+                                    ;
+        }
         _udp.flush();
     }
 
