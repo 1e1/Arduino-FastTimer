@@ -18,8 +18,7 @@
 const unsigned int LOCAL_PORT = 3669;
 const char* NTP_HOST = "2.europe.pool.ntp.org";
 
-WiFiUDP udp;
-TimestampNtp ntp(udp);
+TimestampNtp<WiFiUDP> nts;
 FastTimer<FastTimerPrecision::P_1s_4m> timer1s;
 
 
@@ -54,7 +53,7 @@ void setup()
     Serial.println(NTP_HOST);
 
     // start UDP
-    udp.begin(LOCAL_PORT);
+    nts.begin(LOCAL_PORT);
 
     Serial.println("*** START ***");
     Serial.flush();
@@ -66,19 +65,19 @@ void loop()
 
     if (timer1s.isTickBy64()) {
         // ?.maintain()?
-        ntp.request(NTP_HOST);
+        nts.request(NTP_HOST);
 
         digitalWrite(LED_BUILTIN, LOW);
     }
 
     delay(100);
 
-    if (ntp.listenSync()) {
+    if (nts.listenSync()) {
         Serial.print("Unix timestamp: ");
-        Serial.println(ntp.getTimestampUnix());
+        Serial.println(nts.getTimestampUnix());
 
         Serial.print("RFC3339 timestamp: ");
-        Serial.println(ntp.getTimestampRFC3339());
+        Serial.println(nts.getTimestampRFC3339());
 
         Serial.printf("[HW] Free heap: %d bytes\n", ESP.getFreeHeap());
 

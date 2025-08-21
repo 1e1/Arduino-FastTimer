@@ -78,33 +78,33 @@ An NTP client to obtain a Unix or RFC3339 timestamp.
 setup:
 ```
 const IPAddress NTP_IP(192, 168, 1, 1);
-WiFiUDP udp;
-TimestampNtp ntp(udp);
+TimestampNtp<WiFiUDP> nts;
 
-udp.begin(3615); // free random local port
+nts.begin(); // OR force a port: nts.begin(3615);
+
 ```
 
 request:
 ```
-ntp.request(NTP_IP);
+nts.request(NTP_IP);
 ```
 
 response TimestampUnixNtp:
 ```
-if (ntp.listen()) {
-    Serial.println(ntp.getTimestampUnix());
+if (nts.listen()) {
+    Serial.println(nts.getTimestampUnix());
     /*
-    ntp.syncRFC3339();
-    Serial.println(ntp.getTimestampRFC3339());
+    nts.syncRFC3339();
+    Serial.println(nts.getTimestampRFC3339());
     */
 };
 ```
 
 response TimestampRFC3339Ntp:
 ```
-if (ntp.listenSync()) {
-    // Serial.println(ntp.getTimestampUnix());
-    Serial.println(ntp.getTimestampRFC3339());
+if (nts.listenSync()) {
+    // Serial.println(nts.getTimestampUnix());
+    Serial.println(nts.getTimestampRFC3339());
 };
 ```
 
@@ -113,33 +113,32 @@ if (ntp.listenSync()) {
 setup
 ```
 const char* NTP_HOST = "2.europe.pool.ntp.org";
-WiFiUDP udp;
-TimestampNtp ntp(udp);
+TimestampNtp<WiFiUDP> nts;
 
-udp.begin(3615); // free random local port
+nts.begin(); // OR force a port: nts.begin(3615);
 ```
 
 request:
 ```
-ntp.request(NTP_HOST);
+nts.request(NTP_HOST);
 ```
 
 response TimestampUnixNtp:
 ```
-if (ntp.listen()) {
-    Serial.println(ntp.getTimestampUnix());
+if (nts.listen()) {
+    Serial.println(nts.getTimestampUnix());
     /*
-    ntp.syncRFC3339(offset);
-    Serial.println(ntp.getTimestampRFC3339());
+    nts.syncRFC3339(offset);
+    Serial.println(nts.getTimestampRFC3339());
     */
 };
 ```
 
 response TimestampRFC3339Ntp:
 ```
-if (ntp.listenSync(offset)) {
-    // Serial.println(ntp.getTimestampUnix());
-    Serial.println(ntp.getTimestampRFC3339());
+if (nts.listenSync(offset)) {
+    // Serial.println(nts.getTimestampUnix());
+    Serial.println(nts.getTimestampRFC3339());
 };
 ```
 
