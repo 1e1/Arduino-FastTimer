@@ -33,6 +33,7 @@ getElapsedTime          KEYWORD2
 
 
 TimestampUnixNtp        KEYWORD1    DATA_TYPE
+begin                   KEYWORD2
 getTimestampUnix        KEYWORD2
 request	                KEYWORD2
 listen	                KEYWORD2

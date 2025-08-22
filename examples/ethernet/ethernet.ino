@@ -21,8 +21,7 @@ byte mac[] = {
 const unsigned int LOCAL_PORT = 3669;
 const IPAddress NTP_IP = IPAddress(45, 138, 55, 62); // 2.europe.pool.ntp.org
 
-EthernetUDP udp;
-TimestampNtp ntp(udp);
+TimestampNtp<EthernetUDP> nts;
 FastTimer<FastTimerPrecision::P_1s_4m> timer1s;
 
 
@@ -62,7 +61,7 @@ void setup()
     Serial.println(NTP_IP);
 
     // start UDP
-    udp.begin(LOCAL_PORT);
+    nts.begin(LOCAL_PORT);
 
     Serial.println("*** START ***");
     Serial.flush();
@@ -74,19 +73,19 @@ void loop()
 
     if (timer1s.isPureTickMin()) {
         Ethernet.maintain();
-        ntp.request(NTP_IP);
+        nts.request(NTP_IP);
 
         digitalWrite(LED_BUILTIN, LOW);
     }
 
     delay(100);
 
-    if (ntp.listen()) {
+    if (nts.listen()) {
         Serial.print("Unix timestamp: ");
-        Serial.println(ntp.getTimestampUnix());
+        Serial.println(nts.getTimestampUnix());
 
         Serial.print("RFC3339 timestamp: ");
-        Serial.println(ntp.getTimestampRFC3339());
+        Serial.println(nts.getTimestampRFC3339());
 
         digitalWrite(LED_BUILTIN, HIGH);
     }

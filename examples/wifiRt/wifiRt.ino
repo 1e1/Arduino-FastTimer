@@ -17,8 +17,7 @@
 const unsigned int LOCAL_PORT = 3669;
 const char* NTP_HOST = "2.europe.pool.ntp.org";
 
-WiFiUDP udp;
-TimestampNtp ntp(udp);
+TimestampNtp<WiFiUDP> nts;
 ShortTimer8<ShortTimerPrecision::P_seconds> timer1s;
 
 
@@ -53,8 +52,8 @@ void setup()
     Serial.println(NTP_HOST);
 
     // start UDP
-    udp.begin(LOCAL_PORT);
-    ntp.request(NTP_HOST);
+    nts.begin(LOCAL_PORT);
+    nts.request(NTP_HOST);
 
     Serial.println("*** START ***");
     Serial.flush();
@@ -66,30 +65,30 @@ void loop()
         const uint8_t delta = timer1s.getElapsedTime();
 
         Serial.print("(estimated) Unix timestamp: ");
-        Serial.println(ntp.getTimestampUnix());
+        Serial.println(nts.getTimestampUnix());
 
-        ntp.syncRFC3339(delta);
+        nts.syncRFC3339(delta);
         Serial.print("(estimated) RFC3339 timestamp: ");
-        Serial.println(ntp.getTimestampRFC3339());
+        Serial.println(nts.getTimestampRFC3339());
 
         // update every minute
         if (delta >= 60) {
             // ?.maintain()?
-            ntp.request(NTP_HOST);
+            nts.request(NTP_HOST);
 
             digitalWrite(LED_BUILTIN, LOW);
         }
     }
 
-    if (ntp.listen()) {
+    if (nts.listen()) {
         timer1s.reset();
 
         Serial.print("(fresh) Unix timestamp: ");
-        Serial.println(ntp.getTimestampUnix());
+        Serial.println(nts.getTimestampUnix());
 
-        ntp.syncRFC3339();
+        nts.syncRFC3339();
         Serial.print("(fresh) RFC3339 timestamp: ");
-        Serial.println(ntp.getTimestampRFC3339());
+        Serial.println(nts.getTimestampRFC3339());
 
         Serial.printf("[HW] Free heap: %d bytes\n", ESP.getFreeHeap());
 
