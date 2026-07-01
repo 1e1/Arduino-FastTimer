@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Arduino.h>
 #include <Udp.h>
 #include <IPAddress.h>
 
@@ -21,10 +22,10 @@ public:
     static constexpr unsigned int LOCAL_PORT = 6687; // "NTP" on DTMF
     static constexpr unsigned int NTP_PORT = 123;
     static constexpr unsigned long OFFSET_MON_JAN_1ST_1900_TO_UNIX_EPOCH = 2208988800UL; //  offset from 1900 to 1970 epoch
-    static constexpr byte NTP_PACKET[48] =  {
-            // LI = 11, alarm condition (FastTimer not synchronized)
+    static constexpr byte NTP_PACKET[48] PROGMEM =  {
+            // LI = 11, alarm condition (clock not synchronized)
             // VN = 100, Version Number: currently 4
-            // VM = 011, client
+            // Mode = 011, client
             // Stratum = 0, unspecified
             // Poll Interval: 6 => 2**6 = 64 seconds
             // Precision: 16MHz Arduino is about 2**-24
@@ -33,7 +34,7 @@ public:
             0, 29, 0, 0,
             // Root Dispersion: 29s -> target less than 1 minute (64s)
             0, 29, 0, 0,
-            // Reference FastTimer Identifier
+            // Reference Clock Identifier
             'K', 'I', 'S', 'S',
             //0
         };
@@ -71,7 +72,7 @@ public:
         this->_sendPacket();
     }
 
-    const bool listen(void)
+    bool listen(void)
     {
         if (!this->_hasResponse()) {
             return false;
@@ -91,7 +92,11 @@ protected:
 
     void _sendPacket(void)
     {
-        this->_udp.write(NTP_PACKET, sizeof(NTP_PACKET));
+        // NTP_PACKET lives in flash (PROGMEM); copy to a transient RAM buffer
+        // before handing it to the UDP stack (48 bytes of stack, not of .data).
+        byte packet[sizeof(NTP_PACKET)];
+        memcpy_P(packet, NTP_PACKET, sizeof(NTP_PACKET));
+        this->_udp.write(packet, sizeof(packet));
         this->_udp.endPacket();
     }
 
@@ -115,6 +120,11 @@ protected:
 
 };
 
+// Out-of-line definition: NTP_PACKET is odr-used (passed by address to
+// memcpy_P), so pre-C++17 toolchains (e.g. the AVR core, gnu++11) need it.
+template<typename T_udp>
+constexpr byte TimestampUnixNtp<T_udp>::NTP_PACKET[];
+
 
 template<typename T_udp>
 class TimestampRFC3339Ntp : public TimestampUnixNtp<T_udp> {
@@ -125,12 +135,20 @@ public:
 
     TimestampRFC3339Ntp() : TimestampUnixNtp<T_udp>() {}
 
-    const String getTimestampRFC3339(void) const
+    // Backward compatible with 3.0.0: returns a String (allocates a copy).
+    String getTimestampRFC3339(void) const
     {
         return this->_strRFC3339;
     }
 
-    const bool listenSync(const int offset = 0)
+    // Zero-copy alternative: points straight at the internal buffer, no
+    // allocation. Valid until the next syncRFC3339() call.
+    const char* c_str(void) const
+    {
+        return this->_strRFC3339;
+    }
+
+    bool listenSync(const int offset = 0)
     {
         if (!this->_hasResponse()) {
             return false;
@@ -142,6 +160,15 @@ public:
         return true;
     }
     
+    // Fills the internal "YYYY-MM-DDThh:mm:ssZ" buffer from the last NTP sync.
+    // Range limits (traded for a tiny, 16-bit, division-light implementation):
+    //  - year is rendered as "20YY", so valid range is 2024..2099;
+    //  - the leap-year rule is the simple 4-year cycle, so the non-leap
+    //    centuries (2100, 2200, ...) are NOT handled;
+    //  - internal counters cap the theoretical span (days on 16 bits,
+    //    years on 8 bits) well beyond the 2099 display limit above.
+    // `offset` is added (in seconds) before conversion, e.g. to compensate for
+    // the elapsed time since the last network sync.
     void syncRFC3339(const int offset = 0)
     {
         // make Time
@@ -180,40 +207,44 @@ public:
 
         // make Date
         // =========
-        // minimal datetime is 2024-03-01 00:00:00
-        const uint8_t nbLeapYear = /* 2024 is a leap year -> */ 1+ /* <- */ ( (daysSince2024 -31 -28) / (365*4 +1) );
-        // limit to 255 years
-        // max is MONDAY_2024_01_01 + 255 years => 2273
-        const uint8_t yearsSince2024 = (daysSince2024 - nbLeapYear) / 365;
-        {
-            // max is 2099 due to 2-bytes completion
-            this->_fillRFC3339(2, yearsSince2024 + 24);
+        // Cheap civil conversion for the supported range: within 2024..2099
+        // there is a leap year every 4 with no century exception, so a handful
+        // of 16-bit divisions + a short month loop suffice (no 32-bit division,
+        // unlike a generic days-from-epoch formula). Feb 29 is handled.
+        static const uint8_t monthSizes[12] PROGMEM =
+            { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
+
+        const uint8_t block = daysSince2024 / 1461;              // 4-year blocks (leap first)
+        uint16_t rem = daysSince2024 - uint16_t(block) * 1461;   // day within the block
+        uint8_t yearInBlock;
+        if (rem < 366) {
+            yearInBlock = 0;                                     // the leap year of the block
+        } else {
+            rem -= 366;
+            yearInBlock = 1 + rem / 365;
+            rem -= uint16_t(yearInBlock - 1) * 365;
+        }
+        const uint8_t yearsSince2024 = block * 4 + yearInBlock;
+        const bool isLeapYear = (yearInBlock == 0);
+
+        uint16_t dayOfYear = rem;                                // 0-based
+        uint8_t month = 0;
+        while (month < 12) {
+            uint8_t monthSize = pgm_read_byte(&monthSizes[month]);
+            if (isLeapYear && month == 1) {                      // February
+                ++monthSize;
+            }
+            if (dayOfYear < monthSize) {
+                break;
+            }
+            dayOfYear -= monthSize;
+            ++month;
         }
 
-        const bool isLeapYear = (yearsSince2024 & 0b11) == 0;
-        // release yearsSince2024
-        uint16_t dayOfPeriod = 1+ daysSince2024 - (yearsSince2024 * 365) - nbLeapYear;
-        // release daysSince2024
-        // release nbLeapYear
-        {
-            uint8_t month = 0;
-            do {
-                uint8_t monthSize = _MONTH_SIZES[month];
-                ++month;
-                if (isLeapYear && month == 1) {
-                    ++monthSize;
-                }
-                if (dayOfPeriod > monthSize) {
-                    dayOfPeriod = dayOfPeriod - monthSize;
-                } else {
-                    break;
-                }
-
-            } while(month < sizeof(_MONTH_SIZES));
-
-            this->_fillRFC3339(5, month);
-            this->_fillRFC3339(8, dayOfPeriod);
-        }
+        // year rendered as "20YY": valid range 2024..2099
+        this->_fillRFC3339(2, yearsSince2024 + 24);
+        this->_fillRFC3339(5, month + 1);
+        this->_fillRFC3339(8, dayOfYear + 1);
     }
 
     protected:
@@ -224,8 +255,6 @@ public:
         this->_strRFC3339[pos+0] = '0' + tens;
         this->_strRFC3339[pos+1] = '0' + value - (tens * 10);
     }
-
-    static constexpr byte _MONTH_SIZES[12] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
 
     char _strRFC3339[21] = "2024-01-01T00:00:00Z";
 

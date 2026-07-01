@@ -1,23 +1,33 @@
 #pragma once
 
+#include <Arduino.h>
 
-/** TIME **/
-//==>  >> 0: 1 unit of embedTime is 0.001s
-//-->  const unsigned long maxTime        = 4294967295; // = 49d 17h 02m 47s
-//-->  const unsigned int maxTime         = 65535;      // = 65s
-//==>  >> 10: 1 unit of embedTime is 1.024s
-//-->  const uint8_t maxEmbedTime         = 255;        // = 4mn 21s 120ms
-//==>  >> 12: 1 unit of embedTime is 4.096s
-//-->  const unsigned int maxEmbedTime    = 65535;      // = 3d 02h 33mn 51s 360ms
-//     const unsigned int moduloEmbedTime = 63281;      // = 3d 00h 00mn 00s 000ms
-//-->  const uint8_t maxEmbedTime         = 255;        // = 17mn 24s 480ms
-//     const uint8_t moduloEmbedTime      = 219;        // = 15mn 00s 000ms
-//==>  >> 14: 1 unit of embedTime is 16.384s
-//-->  const uint8_t maxEmbedTime         = 255;        // = 1h 09mn 37s 920ms
-//     const uint8_t moduloEmbedTime      = 219;        // = 1h 00mn 00s 000ms
-//==>  >> 16: 1 unit of embedTime is 65.536s
-//-->  const uint8_t maxEmbedTime         = 255;        // = 4h 38mn 31s 680ms
-//     const uint8_t moduloEmbedTime      = 219;        // = 4h 00mn 00s 000ms
+
+/** HOW FASTTIMER WORKS **
+ *
+ * FastTimer keeps a single 8-bit counter derived from millis():
+ *     _cachedTime = (uint8_t)(millis() >> P)
+ * P is the precision (a right shift), so it sets the duration of "1 unit":
+ *     P=10 -> unit = 2^10 ms = 1.024s   (256 units ~ 4mn : P_1s_4m)
+ *     P=12 -> unit = 2^12 ms = 4.096s   (256 units ~ 15mn: P_4s_15m)
+ *     P=14 -> unit = 2^14 ms = 16.384s  (256 units ~ 1h  : P_16s_1h)
+ *     P=16 -> unit = 2^16 ms = 65.536s  (256 units ~ 4h  : P_65s_4h)
+ *
+ * update() records which bits of the counter flipped since the last call:
+ *     _section = _cachedTime ^ previousTime
+ * The lowest bit flips every unit, the next every 2 units, ... the highest
+ * every 128 units. So each bit is a tick source of a different period.
+ *
+ *   isTick()        -> true if anything ticked this update (any bit flipped)
+ *   isTickByN()     -> true for the "full range / N" tick OR any coarser one
+ *                      (tests _section >> index; a coarse tick also lights
+ *                       up the finer ones, e.g. isTickBy64 ~ every 4mn/64)
+ *   isPureTickByN() -> true ONLY for that exact boundary (_section == mask),
+ *                      without the coarser overlap
+ *
+ * Call update() often enough (loop period < 1 unit) or ticks may be skipped.
+ * Cost: 2 bytes of RAM, no division, no allocation.
+ */
 
 
 
@@ -132,7 +142,7 @@ public:
     }
 
     unsigned long getElapsedTimeInMillis() const {
-        return getElapsedTime() * P;
+        return static_cast<unsigned long>(getElapsedTime()) * static_cast<uint16_t>(P);
     }
 
 protected:

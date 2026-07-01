@@ -1,5 +1,7 @@
 # Time managers
 
+[![compile-examples](https://github.com/1e1/Arduino-FastTimer/actions/workflows/compile-examples.yml/badge.svg)](https://github.com/1e1/Arduino-FastTimer/actions/workflows/compile-examples.yml)
+
 ## Arduino Libraries
 
 ### FastTimer (approximative time)
@@ -9,8 +11,30 @@ Notify at regular intervals to distribute actions over time.
 Define a fixed duration of cycles that will trigger Ticks at regular intervals.
 For example, `P_1s_4m` generates a Tick every 1 second and lets you define segment groups of up to 4 minutes. 
 
-`isTick(FastTimer::CUT#)` retrieves a Tick of precise length. 
-For example, `FastTimer::CUT64` retrieves Ticks of 4mn/64 ~ 4s.
+#### How it works
+
+FastTimer holds a single 8-bit counter, `_cachedTime = (millis() >> P)`. The
+precision `P` sets the duration of one unit, and 256 units make the full range:
+
+| precision   | 1 unit  | full range |
+|-------------|---------|------------|
+| `P_1s_4m`   | ~1.024s | ~4 min     |
+| `P_4s_15m`  | ~4.1s   | ~15 min    |
+| `P_16s_1h`  | ~16.4s  | ~1 h       |
+| `P_65s_4h`  | ~65.5s  | ~4 h       |
+
+Each `update()` records which bits of the counter flipped since the last call.
+The lowest bit flips every unit, the next every 2 units, ..., the highest every
+128 units — so each bit is a Tick source of a different period.
+
+- `isTick()` — something ticked this update (any bit flipped).
+- `isTickByN()` — the `full range / N` Tick **or any coarser one**. For example
+  `isTickBy64()` fires ~every 4mn/64 ~ 4s with `P_1s_4m`; a coarser tick also
+  lights up the finer ones.
+- `isPureTickByN()` — **only** that exact boundary, without the coarser overlap.
+
+Call `update()` often enough (loop period shorter than one unit) or Ticks may be
+skipped. Cost: 2 bytes of RAM, no division, no allocation.
 
 setup:
 ```
@@ -23,6 +47,10 @@ timer1s.update();
 
 if (timer1s.isTick()) {
     Serial.println("tick...");
+}
+
+if (timer1s.isTickBy64()) {
+    Serial.println("...every 4s");
 }
 ```
 
@@ -142,12 +170,24 @@ if (nts.listenSync(offset)) {
 };
 ```
 
-Notice: `getTimestampRFC3339()` is an expensive.
+Notice: `getTimestampRFC3339()` returns a `String` (it allocates a copy). To
+avoid the allocation, use `c_str()`, which points straight at the internal
+buffer (valid until the next `syncRFC3339()`):
+```
+Serial.println(nts.c_str());
+```
 
 Tips: you can inject myShortTimer.getElapsedTimeInMillis() as offset of myNtp.syncRFC3339(offset), so that you have precision to the second (or minute), whereas network synchronisation is to the minute (or hour). 
 
 
 ## compatibility
+
+`FastTimer` and `ShortTimer8` run everywhere:
 - Arduino avr boards
 - ESP8266
 - ESP32
+
+`TimestampNtp` targets 32-bit cores (ESP8266, ESP32). On 8-bit AVR (16-bit
+`int`) the NTP timestamp assembly overflows: use it on ESP, or feed the raw
+packet bytes into a `long` yourself. `getTimestampRFC3339()` also assumes the
+year stays within `2024..2099`.

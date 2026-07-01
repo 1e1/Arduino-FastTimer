@@ -3,7 +3,12 @@
 #include <FastTimer.hpp>
 
 
-bool isLedOn; 
+#ifndef LED_BUILTIN
+#define LED_BUILTIN 2
+#endif
+
+
+bool isLedOn;
 FastTimer<FastTimerPrecision::P_1s_4m> timer1s;
 
 
