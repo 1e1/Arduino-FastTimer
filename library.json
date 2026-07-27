@@ -1,0 +1,20 @@
+{
+  "name": "FastTimer",
+  "version": "3.1.0",
+  "description": "Manage time sections on Arduino: notify at regular intervals to distribute actions over time. Optionally extended with an NTP client to obtain a Unix or RFC3339 timestamp.",
+  "keywords": "timer, timing, scheduler, tick, interval, ntp, timestamp, unix, rfc3339",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/1e1/Arduino-FastTimer.git"
+  },
+  "authors": [
+    {
+      "name": "1e1",
+      "maintainer": true
+    }
+  ],
+  "license": "MIT",
+  "frameworks": "arduino",
+  "platforms": "*",
+  "headers": "FastTimer.hpp"
+}
